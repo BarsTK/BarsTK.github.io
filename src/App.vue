@@ -30,7 +30,7 @@
           <form action="#" class="search-box">
             <label for="search-field">Поиск</label>
             <input type="text"
-                   placeholder="Type searched text"
+                   placeholder=""
                    :value="searchText"
                    @input.prevent="search($event.target.value)"
                    id="search-field"
@@ -156,7 +156,7 @@
             }
             const parsedData = JSON.stringify(this.ratesData);
             sessionStorage.setItem('currencies', parsedData);
-            if(this.isFiltered) {
+            if(!this.isEmptyObject(this.sortedParams)) {
               this.sort();
             }
           }, 800)
@@ -179,7 +179,8 @@
           .finally(() => (this.loading = false));
       },
       saveChangedData() {
-        const parsedData = JSON.stringify(this.ratesData);
+        let currentData = this.getCurrentSource();
+        const parsedData = JSON.stringify(currentData);
         sessionStorage.setItem('currencies', parsedData);
       },
       sort(statusOrder = -100, nameField = '') {
@@ -194,7 +195,6 @@
         if (this.tmpData.length) {
           this.tmpData.sort(this.compare(this.isEmptyObject(this.sortedParams) ? {ID: 1} : this.sortedParams));
         }
-        this.isFiltered = true;
       },
       isEmptyObject(obj) {
         return Object.keys(obj).length === 0;
@@ -217,6 +217,9 @@
         });
         if (value === '') {
           this.tmpData = [];
+          this.isFiltered = false;
+        } else {
+          this.isFiltered = true;
         }
       },
       //сортирует объект по его свойствам (по нескольким, если field - объект)
@@ -266,7 +269,7 @@
           case "new":
             this.isActionNew = true;
             this.rateEdit = this.cloneObject(this.emptyItem);
-            this.rateEdit.ID = this.ratesData.reduce((max, cur) => cur.ID > max ? cur.ID : max, 0) + 1;
+            this.rateEdit.ID = this.getCurrentSource().reduce((max, cur) => cur.ID > max ? cur.ID : max, 0) + 1;
             break;
           case "edit":
             this.isActionNew = false;
@@ -277,14 +280,24 @@
         this.isItemForm = true;
       },
       onSave(itemRate) {
+        let currentData = this.getCurrentSource();
         if (this.isActionNew) {
-          this.ratesData.push(itemRate);
+          currentData.push(itemRate);
         } else {
-          const pos = this.ratesData.findIndex((item) => item.ID === itemRate.ID);
-          this.ratesData.splice(pos, 1, itemRate);
+          const pos = currentData.findIndex((item) => item.ID === itemRate.ID);
+          currentData.splice(pos, 1, itemRate);
         }
         this.saveChangedData();
+        if (this.isFiltered) {
+          this.search(this.searchText);
+        }
+        if(!this.isEmptyObject(this.sortedParams)) {
+          this.sort();
+        }
         this.isItemForm = false;
+      },
+      getCurrentSource() {
+        return this.isFiltered ? this.tmpData : this.ratesData;
       },
       callConfirmBox(id) {
         this.delItemId = id;
